@@ -1,0 +1,8 @@
+[
+    {
+      "uri": "/api/Patient/:patientId",
+      "method": "GET",
+      "handler": "getPatient"
+    }
+  ]
+  
