@@ -1,0 +1,2 @@
+docker stop master_patient_index
+docker rm master_patient_index
