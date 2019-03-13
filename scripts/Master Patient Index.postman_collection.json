@@ -1,0 +1,130 @@
+{
+	"info": {
+		"_postman_id": "11d04e4a-db62-407a-9246-fe22c058528b",
+		"name": "Master Patient Index",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Patient",
+			"item": [
+				{
+					"name": "",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json+fhir"
+							},
+							{
+								"key": "X-Requested-With",
+								"value": "XMLHttpRequest",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8085/api/Patient/{{patientId}}",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8085",
+							"path": [
+								"api",
+								"Patient",
+								"{{patientId}}"
+							]
+						},
+						"description": "Fetches a bundle of all Patient resources for the specified patient or search criteria."
+					},
+					"response": []
+				},
+				{
+					"name": "",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json+fhir"
+							},
+							{
+								"key": "authorization",
+								"value": "{{authorization}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json+fhir"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:3000/mpi/Patient",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"mpi",
+								"Patient"
+							]
+						},
+						"description": "Creates a single patient"
+					},
+					"response": []
+				},
+				{
+					"name": "",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json+fhir"
+							},
+							{
+								"key": "authorization",
+								"value": "{{authorization}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:3000/mpi/Patient/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"mpi",
+								"Patient",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{id}}"
+								}
+							]
+						},
+						"description": "Return a single Patient for the specified id"
+					},
+					"response": []
+				}
+			],
+			"description": "Folder for Patient"
+		}
+	]
+}
