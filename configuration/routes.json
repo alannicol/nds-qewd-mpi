@@ -3,5 +3,16 @@
       "uri": "/api/Patient/:patientId",
       "method": "GET",
       "handler": "getPatient"
+    },
+    {
+      "uri": "/api/Patient",
+      "method": "GET",
+      "handler": "getPatients"
+    }
+    ,
+    {
+      "uri": "/api/Patient",
+      "method": "POST",
+      "handler": "createPatient"
     }
   ]
