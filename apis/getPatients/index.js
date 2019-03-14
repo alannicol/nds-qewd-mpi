@@ -1,18 +1,16 @@
 const mpi = require('../../utils/mpi.js');
 
 module.exports = function (args, finished) {
- 
-  try {
-    if(typeof args.req.query !== "undefined") {
-      mpi.getPatients(args.req.query.name,mpiResponse, finished);
-    } else {
-      mpiResponse("Request does not include patient name query");
-    } 
-  } catch(err) {
-    console.log(err);
-  }
+
+  if(args.req.query !== "") {
+    mpi.getPatients(args.req.query.name,mpiResponse, finished);
+  } else {
+    finished({error: 'Request does not include patient name query', status: {
+      code: 404
+    }});
+  } 
 }
 
-function mpiResponse(patient, finished) {
-  finished(patient);
+function mpiResponse(response, finished) {
+  finished(response);
 }

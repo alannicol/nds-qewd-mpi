@@ -1,5 +1,6 @@
 [
   "pg",
+  "winston",
   "openid-client",
   "qewd-template",
   "moment-timezone",
