@@ -1,4 +1,4 @@
-SELECT I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, 
+SELECT P.id, I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, 
 A.line1 as street, A.city, A.district, A.country, A.postalcode, P.telecom from mpi."Patient" AS P 
 INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id
 INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id
@@ -6,7 +6,7 @@ INNER JOIN mpi."Gender" AS G ON P.gender = G.id
 INNER JOIN mpi."Address" AS A ON A.patientId = P.id
 WHERE P.id = 1
 
-SELECT I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, 
+SELECT P.id, I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, 
 A.line1 as street, A.city, A.district, A.country, A.postalcode, P.telecom from mpi."Patient" AS P 
 INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id
 INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id

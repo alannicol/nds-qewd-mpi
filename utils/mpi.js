@@ -2,38 +2,50 @@ const log = require("../utils/logger.js");
 const config = require('../configuration/global_config.json');
 const pg = require('pg');
 
-const GET_PATIENT_QUERY = 'SELECT I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, 
-A.line1 as street, A.city, A.district, A.country, A.postalcode, P.telecom from mpi."Patient" AS P 
-INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id
-INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id
-INNER JOIN mpi."Gender" AS G ON P.gender = G.id
-INNER JOIN mpi."Address" AS A ON A.patientId = P.id
-WHERE P.id = $1';
+const GET_PATIENT_QUERY = 'SELECT P.id, I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased,' +
+'A.line1 as street, A.city, A.district, A.country, A.postalcode, P.telecom from mpi."Patient" AS P ' +
+'INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id ' +
+'INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id ' +
+'INNER JOIN mpi."Gender" AS G ON P.gender = G.id ' +
+'INNER JOIN mpi."Address" AS A ON A.patientId = P.id ' +
+'WHERE P.id = $1';
 
-const GET_PATIENTS_QUERY = 'SELECT I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, 
-A.line1 as street, A.city, A.district, A.country, A.postalcode, P.telecom from mpi."Patient" AS P 
-INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id
-INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id
-INNER JOIN mpi."Gender" AS G ON P.gender = G.id
-INNER JOIN mpi."Address" AS A ON A.patientId = P.id
-WHERE P.family = $1';
+const GET_PATIENTS_QUERY = 'SELECT P.id, I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, ' +
+'A.line1 as street, A.city, A.district, A.country, A.postalcode, P.telecom from mpi."Patient" AS P ' +
+'INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id ' +
+'INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id ' +
+'INNER JOIN mpi."Gender" AS G ON P.gender = G.id ' +
+'INNER JOIN mpi."Address" AS A ON A.patientId = P.id ' +
+'WHERE P.family = $1';
 
-const CREATE_PATIENT_QUERY = 'INSERT INTO mpi."Patient" (prefix,family,telecom,gender,deceased,birthDate)
-VALUES
-($1, $2, $3,$4,$5,$6) RETURNING id;';
+const CREATE_PATIENT_QUERY = 'INSERT INTO mpi."Patient" (prefix,family,telecom,gender,deceased,birthDate) \
+VALUES ($1,$2,$3,$4,$5,$6) RETURNING id;';
+
+const CREATE_PATIENT_IDENTIFIER_QUERY = 'INSERT INTO mpi."Identifier" (value, patientId) \
+VALUES ($1, $2);';
+
+const CREATE_PATIENT_GIVEN_NAME_QUERY = 'INSERT INTO mpi."Given_Name" (value, patientId) \
+VALUES ($1, $2);';
+
+const CREATE_PATIENT_ADDRESS_QUERY = 'INSERT INTO mpi."Address" (line1, line2, city, district, postalCode, country, patientId) \
+VALUES ($1,$2,$3,$4,$5,$6,$7);';
+
+const GET_GENDER_QUERY = 'SELECT * FROM GENDER WHERE description = $1';
 
 const CONNECTION_STRING = 'postgres://postgres:postgres@host.docker.internal:5432/mpi';
+
+const DEFAULT_GENDER = 4;
 
 const logger = log.createLogger();
 
 exports.getPatient = function (patientId, callBack, finished) {
 
+  logInfo("getPatient", patientId, callBack);
   var client = new pg.Client(CONNECTION_STRING);
 
   client.connect((error, client, done) => {
     if(error) throw error;
-
-    client.query(GET_PATIENT_QUERY, [patientId],(error, response) => {  
+    client.query(GET_PATIENT_QUERY, [patientId],(error, response) => { 
       if(!error && response) {
         patient = createPatient(response.rows[0]);
         client.end();
@@ -49,15 +61,15 @@ exports.getPatient = function (patientId, callBack, finished) {
 
 exports.getPatients = function (familyName, callBack, finished) {
 
-  logInfo("getPatients", name, callBack);
+  logInfo("getPatients", familyName, callBack);
   var client = new pg.Client(CONNECTION_STRING);
 
   client.connect((error, client, done) => {
     if(!error) {
-      client.query(GET_PATIENTS_QUERY, [familyName],(error, response) => { 
+      client.query(GET_PATIENTS_QUERY, [familyName],(error, response) => {
         if(!error) {
           client.end();
-          handleGetPatientsResponsefamilyName, response, callBack, finished);
+          handleGetPatientsResponse(familyName, response, callBack, finished);
         } else {
           handleGetPatientsError(familyName, error, callBack, finished);
         }
@@ -70,7 +82,8 @@ exports.getPatients = function (familyName, callBack, finished) {
 
 function handleGetPatientsResponse(familyName, response, callBack, finished) {
   logInfo("getPatients", response);
-  if (response.rows.size > 0) {            
+
+  if (response.rowCount > 0) {            
     callBack(createBundle(response), finished);
   } else {
     callBack({error: 'Unable to retrieve patient with name of ' + familyName, status: {
@@ -92,10 +105,22 @@ exports.createPatient = function(patient, callBack, finished) {
 
   client.connect((error, client, done) => {
     if(error) throw error;
-
     client.query(CREATE_PATIENT_QUERY, 
-    [patient.id, patient.identifier[0].value, patient.name.family, patient.name.given[0], patient.name.prefix, patient.gender,patient.deceasedBoolean, patient.birthDate],(error, response) => {  
+    [patient.prefix, patient.family, patient.telecom, findGenderIdentifier(client, patient.gender), patient.deceasedBoolean, patient.birthDate] ,(error, response) => {  
       if(!error) {
+
+          var patientId = response.id;
+          client.query(CREATE_PATIENT_IDENTIFIER_QUERY, [patient.identifier[0].value, patientId] ,(error, response) => {
+            if(!error) {
+              client.query(CREATE_PATIENT_GIVEN_NAME_QUERY, [patient.name.given[0], patientId] ,(error, response) => {
+                if(!error) { 
+                  client.query(CREATE_PATIENT_ADDRESS_QUERY, [patient.address.line[0], patient.address.line[1], patient.address.city, patient.address.district, 
+                    patient.address.postalCode, patient.address.country, patientId] ,(error, response) => {
+                  });
+                }
+              });
+            } 
+        });
         client.end();
         callBack('Patient ' + patient.id + ' created', finished);
       } else {
@@ -107,23 +132,31 @@ exports.createPatient = function(patient, callBack, finished) {
   });
 }
 
+function findGenderIdentifier(client, gender) {
+  client.query(GET_GENDER_QUERY, [gender],(error,response) => {
+    if(!error) {
+      return response.id;
+    } else {
+      return DEFAULT_GENDER;
+    }
+  });
+}
+
 function createPatient(patient) {
-  return  createPatientObject(patient.id, patient.identifier, patient.family, patient.given, patient.prefix, patient.gender,
-  patient.deceased, patient.dob);
+  return createPatientObject(patient.id, patient.identity, patient.prefix, patient.prefix, patient.given, patient.family, patient.gender,
+  patient.deceased, patient.street, patient.city, patient.district, patient.country, patient.postalcode, patient.telecom);
 }
 
 function createBundle(patients) {
 
   var bundleObject = [];
 
-  console.log(patients);
-  console.log(patients.size);
+  for (i = 0; i < patients.rowCount; i++) { 
+    patient = patients.rows[i];
+    console.log(patient);
 
-  for (i = 0; i < patients.length; i++) { 
-    patient = patients.row[i];
-
-    patientObject = createPatientObject(patient.id, patient.identifier, patient.family, patient.given, patient.prefix, patient.gender,
-      patient.deceased, patient.dob);
+    patientObject = createPatientObject(patient.id, patient.identity, patient.prefix, patient.prefix, patient.given, patient.family, patient.gender,
+      patient.deceased, patient.street, patient.city, patient.district, patient.country, patient.postalcode, patient.telecom);
 
     bundleObject.push(patientObject);
   }
@@ -135,15 +168,15 @@ function createBundle(patients) {
   return bundle;
 }
 
-function createPatientObject(id, identifierValue, family, given, prefix, gender, 
-  deceasedBoolean, birthDate) {
+function createPatientObject(id, identity, prefix, given, family, gender, birthDate, 
+  deceased, street, city, district, country, postalcode, telecom) {
   var patient = {
     resourceType: "Patient",
     id: id,
     identifier: [
       {
         system: "urn:oid:2.16.840.1.113883.2.1.3.2.4.16.53",
-        value: identifierValue
+        value: identity
       }
     ],
     name: {
@@ -154,18 +187,18 @@ function createPatientObject(id, identifierValue, family, given, prefix, gender,
       ],
       prefix: prefix
     },
-    telecom: "",
+    telecom: telecom,
     gender: gender,
-    deceasedBoolean: deceasedBoolean,
+    deceasedBoolean: deceased,
     birthDate: birthDate,
     address: {
       resourceType: "Address",
-      line: [""
+      line: [street
       ],
-      city: "",
-      district: "",
-      postalCode: "",
-      country: ""
+      city: city,
+      district: district,
+      postalCode: postalcode,
+      country: country
     }
   };
 
