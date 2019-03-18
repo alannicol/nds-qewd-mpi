@@ -2,18 +2,38 @@ const log = require("../utils/logger.js");
 const config = require('../configuration/global_config.json');
 const pg = require('pg');
 
-const connectionString = 'postgres://postgres:postgres@host.docker.internal:5432/mpi';
+const GET_PATIENT_QUERY = 'SELECT I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, 
+A.line1 as street, A.city, A.district, A.country, A.postalcode, P.telecom from mpi."Patient" AS P 
+INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id
+INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id
+INNER JOIN mpi."Gender" AS G ON P.gender = G.id
+INNER JOIN mpi."Address" AS A ON A.patientId = P.id
+WHERE P.id = $1';
+
+const GET_PATIENTS_QUERY = 'SELECT I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, 
+A.line1 as street, A.city, A.district, A.country, A.postalcode, P.telecom from mpi."Patient" AS P 
+INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id
+INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id
+INNER JOIN mpi."Gender" AS G ON P.gender = G.id
+INNER JOIN mpi."Address" AS A ON A.patientId = P.id
+WHERE P.family = $1';
+
+const CREATE_PATIENT_QUERY = 'INSERT INTO mpi."Patient" (prefix,family,telecom,gender,deceased,birthDate)
+VALUES
+($1, $2, $3,$4,$5,$6) RETURNING id;';
+
+const CONNECTION_STRING = 'postgres://postgres:postgres@host.docker.internal:5432/mpi';
 
 const logger = log.createLogger();
 
 exports.getPatient = function (patientId, callBack, finished) {
 
-  var client = new pg.Client(connectionString);
+  var client = new pg.Client(CONNECTION_STRING);
 
   client.connect((error, client, done) => {
     if(error) throw error;
 
-    client.query('SELECT * FROM mpi."Patient" AS P WHERE P.id = $1', [patientId],(error, response) => {  
+    client.query(GET_PATIENT_QUERY, [patientId],(error, response) => {  
       if(!error && response) {
         patient = createPatient(response.rows[0]);
         client.end();
@@ -27,33 +47,33 @@ exports.getPatient = function (patientId, callBack, finished) {
   });
 }
 
-exports.getPatients = function (name, callBack, finished) {
+exports.getPatients = function (familyName, callBack, finished) {
 
   logInfo("getPatients", name, callBack);
-  var client = new pg.Client(connectionString);
+  var client = new pg.Client(CONNECTION_STRING);
 
   client.connect((error, client, done) => {
     if(!error) {
-      client.query('SELECT * FROM mpi."Patient" AS P WHERE P.family = $1', [name],(error, response) => { 
+      client.query(GET_PATIENTS_QUERY, [familyName],(error, response) => { 
         if(!error) {
           client.end();
-          handleGetPatientsResponse(name, response, callBack, finished);
+          handleGetPatientsResponsefamilyName, response, callBack, finished);
         } else {
-          handleGetPatientsError(name, error, callBack, finished);
+          handleGetPatientsError(familyName, error, callBack, finished);
         }
       });
     } else {
-      handleGetPatientsError(name, error, callBack, finished);
+      handleGetPatientsError(familyName, error, callBack, finished);
     }
   });
 }
 
-function handleGetPatientsResponse(name, response, callBack, finished) {
+function handleGetPatientsResponse(familyName, response, callBack, finished) {
   logInfo("getPatients", response);
   if (response.rows.size > 0) {            
     callBack(createBundle(response), finished);
   } else {
-    callBack({error: 'Unable to retrieve patient with name of ' + name, status: {
+    callBack({error: 'Unable to retrieve patient with name of ' + familyName, status: {
       code: 404
     }}, finished);
   }
@@ -68,12 +88,12 @@ function handleGetPatientsError(name, error, callBack, finished) {
 
 exports.createPatient = function(patient, callBack, finished) {
 
-  var client = new pg.Client(connectionString);
+  var client = new pg.Client(CONNECTION_STRING);
 
   client.connect((error, client, done) => {
     if(error) throw error;
 
-    client.query('INSERT into mpi."Patient" (id,identifier,family,given,prefix,gender,deceased,dob) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', 
+    client.query(CREATE_PATIENT_QUERY, 
     [patient.id, patient.identifier[0].value, patient.name.family, patient.name.given[0], patient.name.prefix, patient.gender,patient.deceasedBoolean, patient.birthDate],(error, response) => {  
       if(!error) {
         client.end();
