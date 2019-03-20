@@ -24,13 +24,13 @@ VALUES ($1,$2,$3,$4,$5,$6) RETURNING id;';
 const CREATE_PATIENT_IDENTIFIER_QUERY = 'INSERT INTO mpi."Identifier" (value, patientId) \
 VALUES ($1, $2);';
 
-const CREATE_PATIENT_GIVEN_NAME_QUERY = 'INSERT INTO mpi."Given_Name" (value, patientId) \
+const CREATE_PATIENT_GIVEN_NAME_QUERY = 'INSERT INTO mpi."Given_Name" (value, patientid) \
 VALUES ($1, $2);';
 
-const CREATE_PATIENT_ADDRESS_QUERY = 'INSERT INTO mpi."Address" (line1, line2, city, district, postalCode, country, patientId) \
+const CREATE_PATIENT_ADDRESS_QUERY = 'INSERT INTO mpi."Address" (line1, line2, city, district, postalCode, country, patientid) \
 VALUES ($1,$2,$3,$4,$5,$6,$7);';
 
-const GET_GENDER_QUERY = 'SELECT * FROM GENDER WHERE description = $1';
+const GET_GENDER_QUERY = 'SELECT * FROM mpi."Gender" WHERE description = $1';
 
 const CONNECTION_STRING = 'postgres://postgres:postgres@host.docker.internal:5432/mpi';
 
@@ -45,9 +45,9 @@ exports.getPatient = function (patientId, callBack, finished) {
 
   client.connect((error, client, done) => {
     if(error) throw error;
-    client.query(GET_PATIENT_QUERY, [patientId],(error, response) => { 
-      if(!error && response) {
-        patient = createPatient(response.rows[0]);
+    client.query(GET_PATIENT_QUERY, [patientId],(error, result) => { 
+      if(!error) {
+        patient = createPatient(result.rows[0]);
         client.end();
         callBack(patient, finished);
       } else {
@@ -66,10 +66,10 @@ exports.getPatients = function (familyName, callBack, finished) {
 
   client.connect((error, client, done) => {
     if(!error) {
-      client.query(GET_PATIENTS_QUERY, [familyName],(error, response) => {
+      client.query(GET_PATIENTS_QUERY, [familyName],(error, result) => {
         if(!error) {
           client.end();
-          handleGetPatientsResponse(familyName, response, callBack, finished);
+          handleGetPatientsResponse(familyName, result, callBack, finished);
         } else {
           handleGetPatientsError(familyName, error, callBack, finished);
         }
@@ -102,48 +102,52 @@ function handleGetPatientsError(name, error, callBack, finished) {
 exports.createPatient = function(patient, callBack, finished) {
 
   var client = new pg.Client(CONNECTION_STRING);
-
+  var genderId;
+  var patientId;
+  
   client.connect((error, client, done) => {
-    if(error) throw error;
-    client.query(CREATE_PATIENT_QUERY, 
-    [patient.prefix, patient.family, patient.telecom, findGenderIdentifier(client, patient.gender), patient.deceasedBoolean, patient.birthDate] ,(error, response) => {  
-      if(!error) {
-
-          var patientId = response.id;
-          client.query(CREATE_PATIENT_IDENTIFIER_QUERY, [patient.identifier[0].value, patientId] ,(error, response) => {
-            if(!error) {
-              client.query(CREATE_PATIENT_GIVEN_NAME_QUERY, [patient.name.given[0], patientId] ,(error, response) => {
-                if(!error) { 
-                  client.query(CREATE_PATIENT_ADDRESS_QUERY, [patient.address.line[0], patient.address.line[1], patient.address.city, patient.address.district, 
-                    patient.address.postalCode, patient.address.country, patientId] ,(error, response) => {
-                  });
-                }
+    if(error) return rollBack(client, error, callBack, finished, 'Unable to create patient');
+    query(client, GET_GENDER_QUERY, [patient.gender], callBack, finished, (result) => {
+      genderId = result.rows[0].id;
+      client.query('BEGIN', (error, result) => {
+        if(error) return rollBack(client, error, callBack, finished, 'Unable to create patient');
+        query(client, CREATE_PATIENT_QUERY, [patient.name.prefix, patient.name.family, patient.telecom, genderId, patient.deceasedBoolean, patient.birthDate], callBack, finished, (result) => { 
+          patientId = result.rows[0].id;
+          query(client, CREATE_PATIENT_IDENTIFIER_QUERY, [patient.identifier[0].value, patientId], callBack, finished, (result) => {
+            query(client, CREATE_PATIENT_GIVEN_NAME_QUERY, [patient.name.given[0], patientId] , callBack, finished, (result) => {
+              query(client, CREATE_PATIENT_ADDRESS_QUERY, [patient.address.line[0], patient.address.line[1], patient.address.city, patient.address.district, 
+                patient.address.postalCode, patient.address.country, patientId] , callBack, finished, (error, result) => {
+                console.log("Created address");
+                client.query('COMMIT', client.end.bind(client));
+                callBack('Patient ' + patientId + ' has been created', finished);
               });
-            } 
+            });
+          });
         });
-        client.end();
-        callBack('Patient ' + patient.id + ' created', finished);
-      } else {
-        callBack({error: 'Unable to create patient ' + name, status: {
-          code: 404
-        }}, finished);
-      }
+      });     
     });
-  });
+  }); 
 }
 
-function findGenderIdentifier(client, gender) {
-  client.query(GET_GENDER_QUERY, [gender],(error,response) => {
-    if(!error) {
-      return response.id;
-    } else {
-      return DEFAULT_GENDER;
-    }
-  });
+function query(client, query, parameters, callBack, finished, nextProcess) {
+  client.query(query,parameters,(error, result) => {
+    if(error) return rollBack(client, error, callBack, finished, 'Unable to create patient');
+    nextProcess(result);
+  }); 
 }
+
+function rollBack(client, error, callBack, finished, errorMessage) {
+  client.query('ROLLBACK', function() {
+    client.end();
+    logError("createPatient",error, callBack);
+    callBack({error: errorMessage, status: {
+      code: 404
+    }}, finished);
+  });
+};
 
 function createPatient(patient) {
-  return createPatientObject(patient.id, patient.identity, patient.prefix, patient.prefix, patient.given, patient.family, patient.gender,
+  return createPatientObject(patient.id, patient.identity, patient.prefix, patient.given, patient.family, patient.gender, patient.birthDate, 
   patient.deceased, patient.street, patient.city, patient.district, patient.country, patient.postalcode, patient.telecom);
 }
 
@@ -153,10 +157,9 @@ function createBundle(patients) {
 
   for (i = 0; i < patients.rowCount; i++) { 
     patient = patients.rows[i];
-    console.log(patient);
 
-    patientObject = createPatientObject(patient.id, patient.identity, patient.prefix, patient.prefix, patient.given, patient.family, patient.gender,
-      patient.deceased, patient.street, patient.city, patient.district, patient.country, patient.postalcode, patient.telecom);
+    patientObject = createPatientObject(patient.id, patient.identity, patient.prefix, patient.given, patient.family, patient.gender, patient.birthDate, 
+    patient.deceased, patient.street, patient.city, patient.district, patient.country, patient.postalcode, patient.telecom);
 
     bundleObject.push(patientObject);
   }
