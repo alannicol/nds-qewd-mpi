@@ -3,7 +3,10 @@ const winston = require("winston");
 exports.createLogger = function() {
     return winston.createLogger({
         level: 'info',
-        format: winston.format.prettyPrint(),
+        format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.prettyPrint()
+        ),
         prettyPrint: true,
         defaultMeta: { service: 'user-service' },
         transports: [

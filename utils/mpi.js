@@ -34,13 +34,11 @@ const GET_GENDER_QUERY = 'SELECT * FROM mpi."Gender" WHERE description = $1';
 
 const CONNECTION_STRING = 'postgres://postgres:postgres@host.docker.internal:5432/mpi';
 
-const DEFAULT_GENDER = 4;
-
 const logger = log.createLogger();
 
 exports.getPatient = function (patientId, callBack, finished) {
 
-  logInfo("getPatient", patientId, callBack);
+  logInfo("getPatient", patientId);
   var client = new pg.Client(CONNECTION_STRING);
 
   client.connect((error, client, done) => {
@@ -49,6 +47,7 @@ exports.getPatient = function (patientId, callBack, finished) {
       if(!error) {
         patient = createPatient(result.rows[0]);
         client.end();
+        logInfo("getPatient Success", patientId);
         callBack(patient, finished);
       } else {
         callBack({error: 'Unable to retrieve patient with id of ' + patientId, status: {
@@ -61,7 +60,7 @@ exports.getPatient = function (patientId, callBack, finished) {
 
 exports.getPatients = function (familyName, callBack, finished) {
 
-  logInfo("getPatients", familyName, callBack);
+  logInfo("getPatients", familyName);
   var client = new pg.Client(CONNECTION_STRING);
 
   client.connect((error, client, done) => {
@@ -83,7 +82,8 @@ exports.getPatients = function (familyName, callBack, finished) {
 function handleGetPatientsResponse(familyName, response, callBack, finished) {
   logInfo("getPatients", response);
 
-  if (response.rowCount > 0) {            
+  if (response.rowCount > 0) {   
+    logInfo("getPatients Success", familyName);         
     callBack(createBundle(response), finished);
   } else {
     callBack({error: 'Unable to retrieve patient with name of ' + familyName, status: {
@@ -101,9 +101,13 @@ function handleGetPatientsError(name, error, callBack, finished) {
 
 exports.createPatient = function(patient, callBack, finished) {
 
-  var client = new pg.Client(CONNECTION_STRING);
+  var client;
   var genderId;
   var patientId;
+
+  logInfo("createPatient", patient);
+
+  client = new pg.Client(CONNECTION_STRING);
   
   client.connect((error, client, done) => {
     if(error) return rollBack(client, error, callBack, finished, 'Unable to create patient');
@@ -117,8 +121,8 @@ exports.createPatient = function(patient, callBack, finished) {
             query(client, CREATE_PATIENT_GIVEN_NAME_QUERY, [patient.name.given[0], patientId] , callBack, finished, (result) => {
               query(client, CREATE_PATIENT_ADDRESS_QUERY, [patient.address.line[0], patient.address.line[1], patient.address.city, patient.address.district, 
                 patient.address.postalCode, patient.address.country, patientId] , callBack, finished, (error, result) => {
-                console.log("Created address");
                 client.query('COMMIT', client.end.bind(client));
+                logInfo("createPatient Success", patient);
                 callBack('Patient ' + patientId + ' has been created', finished);
               });
             });
