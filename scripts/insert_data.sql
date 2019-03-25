@@ -1,9 +1,9 @@
-INSERT INTO mpi."Patient" (prefix,family,telecom,gender,deceased,birthDate)
+INSERT INTO mpi."Patient" (prefix,family,gender,deceased,birthDate)
 VALUES
-('Mr', 'Doe', '000-111-2222',1,false,'1970-01-01'),
-('Mrs', 'Doe', '111-222-3333',2,false,'1971-02-02'),
-('Mr', 'Bloggs', '222-333-4444',1,false,'1973-03-03'),
-('Mrs', 'Bloggs', '333-444-5555',2,false,'1974-04-04');
+('Mr', 'Doe', 1,false,'1970-01-01'),
+('Mrs', 'Doe',2,false,'1971-02-02'),
+('Mr', 'Bloggs',1,false,'1973-03-03'),
+('Mrs', 'Bloggs',2,false,'1974-04-04');
 
 INSERT INTO mpi."Identifier" (value, patientId)
 VALUES
@@ -25,3 +25,10 @@ VALUES
 ('99  Bouverie Road','','Robeston Wathen','East Sussex','SA67 9XF','UK', 2),
 ('90  Gloucester Road','','Clashban','Norfolk','IV25 9SU','UK', 3),
 ('88  Redcliffe Way','','Woodthorpe','Merseyside','S43 0NB','UK', 4);
+
+INSERT INTO mpi."Telecom" (value, used, patientId)
+VALUES
+('000-111-2222', 'Home', 1),
+('111-111-2222', 'Home', 2),
+('222-111-2222', 'Home', 3),
+('333-111-2222', 'Home', 4);

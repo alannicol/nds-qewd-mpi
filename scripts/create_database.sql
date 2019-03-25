@@ -14,7 +14,6 @@ CREATE TABLE mpi."Patient" (
     id SERIAL PRIMARY KEY,
     prefix VARCHAR(10),
     family VARCHAR(25),
-    telecom VARCHAR(25),
     gender INTEGER REFERENCES mpi."Gender"(id),
     deceased BOOLEAN,
     birthDate DATE
@@ -49,6 +48,16 @@ CREATE TABLE mpi."Address" (
     district VARCHAR(25),
     postalCode VARCHAR(25),
     country VARCHAR(25),
+    patientId INTEGER REFERENCES mpi."Patient"(id)
+);
+
+ALTER TABLE mpi."Address" 
+    OWNER to postgres;
+
+CREATE TABLE mpi."Telecom" (
+    id SERIAL PRIMARY KEY,
+    value VARCHAR(25),
+    used VARCHAR(25),
     patientId INTEGER REFERENCES mpi."Patient"(id)
 );
 
