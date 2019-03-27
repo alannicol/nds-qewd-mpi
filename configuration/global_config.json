@@ -1,7 +1,8 @@
 {
-    "user": "postgres",
+    "username": "postgres",
     "password": "postgres",
     "host": "host.docker.internal",
     "port": "5432",
-    "dataabse": "mpi"
+    "database": "mpi",
+    "transform": "true"
   }

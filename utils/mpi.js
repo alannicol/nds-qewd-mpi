@@ -1,9 +1,10 @@
 const log = require("../utils/logger.js");
+const transformer = require("../utils/transformer.js");
 const config = require('../configuration/global_config.json');
 const pg = require('pg');
 
 const GET_PATIENT_QUERY = 'SELECT P.id, I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased,' +
-'A.line1 as street, A.city, A.district, A.country, A.postalcode, T.value from mpi."Patient" AS P ' +
+`A.line1 as street, A.city, A.district, A.country, A.postalcode, T.value AS telecom from ${config.database}."Patient" AS P ` +
 'INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id ' +
 'INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id ' +
 'INNER JOIN mpi."Gender" AS G ON P.gender = G.id ' +
@@ -12,7 +13,7 @@ const GET_PATIENT_QUERY = 'SELECT P.id, I.value AS identity, P.prefix, N.value A
 'WHERE P.id = $1';
 
 const GET_PATIENTS_QUERY = 'SELECT P.id, I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, ' +
-'A.line1 as street, A.city, A.district, A.country, A.postalcode, T.value from mpi."Patient" AS P ' +
+`A.line1 as street, A.city, A.district, A.country, A.postalcode, T.value AS telecom from ${config.database}."Patient" AS P ` +
 'INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id ' +
 'INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id ' +
 'INNER JOIN mpi."Gender" AS G ON P.gender = G.id ' +
@@ -20,28 +21,30 @@ const GET_PATIENTS_QUERY = 'SELECT P.id, I.value AS identity, P.prefix, N.value 
 'INNER JOIN mpi."Telecom" AS T ON T.patientId = P.id ' +
 'WHERE P.family = $1';
 
-const CREATE_PATIENT_QUERY = 'INSERT INTO mpi."Patient" (prefix,family,gender,deceased,birthDate) \
-VALUES ($1,$2,$3,$4,$5) RETURNING id;';
+const CREATE_PATIENT_QUERY = `INSERT INTO ${config.database}."Patient" (prefix,family,gender,deceased,birthDate) \
+VALUES ($1,$2,$3,$4,$5) RETURNING id;`;
 
-const CREATE_PATIENT_IDENTIFIER_QUERY = 'INSERT INTO mpi."Identifier" (value, patientId) \
-VALUES ($1, $2);';
+const CREATE_PATIENT_IDENTIFIER_QUERY = `INSERT INTO ${config.database}."Identifier" (value, patientId) \
+VALUES ($1, $2);`;
 
-const CREATE_PATIENT_GIVEN_NAME_QUERY = 'INSERT INTO mpi."Given_Name" (value, patientid) \
-VALUES ($1, $2);';
+const CREATE_PATIENT_GIVEN_NAME_QUERY = `INSERT INTO ${config.database}."Given_Name" (value, patientid) \
+VALUES ($1, $2);`;
 
-const CREATE_PATIENT_ADDRESS_QUERY = 'INSERT INTO mpi."Address" (line1, line2, city, district, postalCode, country, patientid) \
-VALUES ($1,$2,$3,$4,$5,$6,$7);';
+const CREATE_PATIENT_ADDRESS_QUERY = `INSERT INTO ${config.database}."Address" (line1, line2, city, district, postalCode, country, patientid) \
+VALUES ($1,$2,$3,$4,$5,$6,$7);`;
 
-const CREATE_PATIENT_TELECOM_QUERY = 'INSERT INTO mpi."Telecom" (value, used, patientId) \
-VALUES ($1,$2,$3);';
+const CREATE_PATIENT_TELECOM_QUERY = `INSERT INTO ${config.database}."Telecom" (value, used, patientId) \
+VALUES ($1,$2,$3);`;
 
-const GET_GENDER_QUERY = 'SELECT * FROM mpi."Gender" WHERE description = $1';
+const GET_GENDER_QUERY = `SELECT * FROM ${config.database}."Gender" WHERE description = $1`;
 
-const CONNECTION_STRING = 'postgres://postgres:postgres@host.docker.internal:5432/mpi';
+const CONNECTION_STRING = `postgres://${config.password}:${config.username}@${config.host}:${config.port}/${config.database}`;
 
 const logger = log.createLogger();
 
 exports.getPatient = function (patientId, callBack, finished) {
+
+  console.log(CONNECTION_STRING);
 
   logInfo("getPatient", patientId);
   var client = new pg.Client(CONNECTION_STRING);
@@ -79,7 +82,6 @@ function handleGetPatientResponse(patientId, result, callBack, finished) {
 
 function handleGetPatientError(patientId, error, callBack, finished) {
   logError("getPatient",error, callBack);
-  console.log("this is the error:" + error);
   callBack({error: 'Unable to retrieve patient with id of ' + patientId, status: {
     code: 404
   }}, finished);
@@ -135,6 +137,10 @@ exports.createPatient = function(patient, callBack, finished) {
   var patientId;
 
   logInfo("createPatient", patient);
+
+  if(config.transform) {
+    patient = transformer.transformFrom(patient);
+  } 
 
   client = new pg.Client(CONNECTION_STRING);
   
@@ -254,6 +260,9 @@ function createPatientObject(id, identity, prefix, given, family, gender, birthD
     }
   };
 
+  if(config.transform) {
+    patient = transformer.transformTo(patient);
+  }
   return patient;
 }
 

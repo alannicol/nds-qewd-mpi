@@ -1,3 +1,5 @@
+TRUNCATE TABLE mpi."Patient" RESTART IDENTITY CASCADE;
+
 INSERT INTO mpi."Patient" (prefix,family,gender,deceased,birthDate)
 VALUES
 ('Mr', 'Doe', 1,false,'1970-01-01'),

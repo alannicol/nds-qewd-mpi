@@ -9,7 +9,7 @@
 			"name": "Patient",
 			"item": [
 				{
-					"name": "",
+					"name": "Patient",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -28,7 +28,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "http://localhost:8085/api/Patient/{{patientId}}",
+							"raw": "http://localhost:8085/api/Patient/12",
 							"protocol": "http",
 							"host": [
 								"localhost"
@@ -37,7 +37,7 @@
 							"path": [
 								"api",
 								"Patient",
-								"{{patientId}}"
+								"12"
 							]
 						},
 						"description": "Fetches a bundle of all Patient resources for the specified patient or search criteria."
@@ -45,7 +45,7 @@
 					"response": []
 				},
 				{
-					"name": "",
+					"name": "Patient",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -54,27 +54,25 @@
 								"value": "application/json+fhir"
 							},
 							{
-								"key": "authorization",
-								"value": "{{authorization}}"
-							},
-							{
 								"key": "Content-Type",
-								"value": "application/json+fhir"
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": ""
+							"raw": "{\n    \"resourceType\": \"Patient\",\n    \"identifier\": [\n        {\n            \"system\": \"urn:oid:2.16.840.1.113883.2.1.3.2.4.16.53\",\n            \"value\": \"23456\"\n        }\n    ],\n    \"name\": [\n    \t{\n        \"resourceType\": \"HumanName\",\n        \"family\": \"Nicol\",\n        \"given\": [\n            \"Ross\"\n        ],\n        \"prefix\": \"Mr\"\n    \t}\n    ],\n    \"telecom\": \"(03) 3410 5613\",\n    \"gender\": \"male\",\n    \"deceasedBoolean\": false,\n    \"birthDate\": \"1977-05-25\",\n    \"address\": [\n    \t{\n        \"resourceType\": \"Address\",\n        \"line\": [\n            \"148 Francis Street\"\n        ],\n        \"city\": \"Seaforth\",\n        \"district\": \"Northumberland\",\n        \"postalCode\": \"SX54 5DE\",\n        \"country\": \"UK\"\n    \t}\n   ]\n}"
 						},
 						"url": {
-							"raw": "http://localhost:3000/mpi/Patient",
+							"raw": "http://localhost:8085/api/Patient",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "3000",
+							"port": "8085",
 							"path": [
-								"mpi",
+								"api",
 								"Patient"
 							]
 						},
@@ -83,7 +81,7 @@
 					"response": []
 				},
 				{
-					"name": "",
+					"name": "Patients",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -92,8 +90,9 @@
 								"value": "application/json+fhir"
 							},
 							{
-								"key": "authorization",
-								"value": "{{authorization}}"
+								"key": "X-Requested-With",
+								"value": "XMLHttpRequest",
+								"type": "text"
 							}
 						],
 						"body": {
@@ -101,21 +100,20 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "http://localhost:3000/mpi/Patient/:id",
+							"raw": "http://localhost:8085/api/Patient?name=Nicol",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "3000",
+							"port": "8085",
 							"path": [
-								"mpi",
-								"Patient",
-								":id"
+								"api",
+								"Patient"
 							],
-							"variable": [
+							"query": [
 								{
-									"key": "id",
-									"value": "{{id}}"
+									"key": "name",
+									"value": "Nicol"
 								}
 							]
 						},

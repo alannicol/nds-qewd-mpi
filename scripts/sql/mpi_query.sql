@@ -1,5 +1,5 @@
 SELECT P.id, I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, 
-A.line1 as street, A.city, A.district, A.country, A.postalcode, T.value from mpi."Patient" AS P 
+A.line1 as street, A.city, A.district, A.country, A.postalcode, T.value AS telecom  from mpi."Patient" AS P 
 INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id
 INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id
 INNER JOIN mpi."Gender" AS G ON P.gender = G.id
@@ -8,7 +8,7 @@ INNER JOIN mpi."Telecom" AS T ON T.patientId = P.id
 WHERE P.id = 1
 
 SELECT P.id, I.value AS identity, P.prefix, N.value AS given,P.family, G.description as gender, P.birthdate, P.deceased, 
-A.line1 as street, A.city, A.district, A.country, A.postalcode, T.value from mpi."Patient" AS P 
+A.line1 as street, A.city, A.district, A.country, A.postalcode, T.value AS telecom  from mpi."Patient" AS P 
 INNER JOIN mpi."Identifier" AS I ON I.patientId = P.id
 INNER JOIN mpi."Given_Name" AS N ON N.patientId = P.id
 INNER JOIN mpi."Gender" AS G ON P.gender = G.id
